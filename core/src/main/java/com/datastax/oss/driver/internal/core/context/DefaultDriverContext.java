@@ -73,6 +73,7 @@ import com.datastax.oss.driver.internal.core.util.concurrent.CycleDetector;
 import com.datastax.oss.driver.internal.core.util.concurrent.LazyReference;
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
+import com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.buffer.ByteBuf;
@@ -192,6 +193,7 @@ public class DefaultDriverContext implements InternalDriverContext {
   private final RequestTracker requestTrackerFromBuilder;
   private final Map<String, Predicate<Node>> nodeFiltersFromBuilder;
   private final ClassLoader classLoader;
+  private final Map<String, String> startupOptions;
 
   public DefaultDriverContext(
       DriverConfigLoader configLoader,
@@ -200,7 +202,8 @@ public class DefaultDriverContext implements InternalDriverContext {
       SchemaChangeListener schemaChangeListener,
       RequestTracker requestTracker,
       Map<String, Predicate<Node>> nodeFilters,
-      ClassLoader classLoader) {
+      ClassLoader classLoader,
+      Map<String, String> extraStartupOptions) {
     this.config = configLoader.getInitialConfig();
     this.configLoader = configLoader;
     DriverExecutionProfile defaultProfile = config.getDefaultProfile();
@@ -228,6 +231,20 @@ public class DefaultDriverContext implements InternalDriverContext {
             "requestTracker", () -> buildRequestTracker(requestTrackerFromBuilder), cycleDetector);
     this.nodeFiltersFromBuilder = nodeFilters;
     this.classLoader = classLoader;
+    this.startupOptions = buildStartupOptions(extraStartupOptions);
+  }
+
+  /**
+   * Builds a map of options to use when sending a Startup message. The options argument passed in
+   * will append to, or overwrite, the Internal default options sent by the driver.
+   */
+  protected Map<String, String> buildStartupOptions(Map<String, String> options) {
+    NullAllowingImmutableMap.Builder<String, String> builder = NullAllowingImmutableMap.builder();
+    builder.putAll(new InternalStartupOptions(this).getOptions());
+    if (options != null) {
+      builder.putAll(options);
+    }
+    return builder.build();
   }
 
   protected Map<String, LoadBalancingPolicy> buildLoadBalancingPolicies() {
@@ -730,5 +747,11 @@ public class DefaultDriverContext implements InternalDriverContext {
   @Override
   public ProtocolVersion getProtocolVersion() {
     return getChannelFactory().getProtocolVersion();
+  }
+
+  @NonNull
+  @Override
+  public Map<String, String> getStartupOptions() {
+    return startupOptions;
   }
 }

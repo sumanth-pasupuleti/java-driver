@@ -41,6 +41,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ public abstract class SessionBuilder<SelfT extends SessionBuilder, SessionT> {
   private ImmutableMap.Builder<String, Predicate<Node>> nodeFilters = ImmutableMap.builder();
   protected CqlIdentifier keyspace;
   private ClassLoader classLoader = null;
+  protected Map<String, String> startupOptions = new HashMap<>();
 
   /**
    * Sets the configuration loader to use.
@@ -340,10 +342,17 @@ public abstract class SessionBuilder<SelfT extends SessionBuilder, SessionT> {
         schemaChangeListener,
         requestTracker,
         nodeFilters,
-        classLoader);
+        classLoader,
+        startupOptions);
   }
 
   private static <T> T buildIfNull(T value, Supplier<T> builder) {
     return (value == null) ? builder.get() : value;
+  }
+
+  @NonNull
+  public SelfT withStartupOptions(@Nullable Map<String, String> options) {
+    this.startupOptions = options;
+    return self;
   }
 }
