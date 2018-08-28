@@ -73,7 +73,6 @@ import com.datastax.oss.driver.internal.core.util.concurrent.CycleDetector;
 import com.datastax.oss.driver.internal.core.util.concurrent.LazyReference;
 import com.datastax.oss.protocol.internal.Compressor;
 import com.datastax.oss.protocol.internal.FrameCodec;
-import com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.netty.buffer.ByteBuf;
@@ -182,6 +181,7 @@ public class DefaultDriverContext implements InternalDriverContext {
   private final LazyReference<NodeStateListener> nodeStateListenerRef;
   private final LazyReference<SchemaChangeListener> schemaChangeListenerRef;
   private final LazyReference<RequestTracker> requestTrackerRef;
+  private final LazyReference<StartupOptionsBuilder> startupOptionsBuilderRef;
 
   private final DriverConfig config;
   private final DriverConfigLoader configLoader;
@@ -193,7 +193,6 @@ public class DefaultDriverContext implements InternalDriverContext {
   private final RequestTracker requestTrackerFromBuilder;
   private final Map<String, Predicate<Node>> nodeFiltersFromBuilder;
   private final ClassLoader classLoader;
-  private final Map<String, String> startupOptions;
 
   public DefaultDriverContext(
       DriverConfigLoader configLoader,
@@ -203,7 +202,7 @@ public class DefaultDriverContext implements InternalDriverContext {
       RequestTracker requestTracker,
       Map<String, Predicate<Node>> nodeFilters,
       ClassLoader classLoader,
-      Map<String, String> extraStartupOptions) {
+      Map<String, String> additionalStartupOptions) {
     this.config = configLoader.getInitialConfig();
     this.configLoader = configLoader;
     DriverExecutionProfile defaultProfile = config.getDefaultProfile();
@@ -231,20 +230,23 @@ public class DefaultDriverContext implements InternalDriverContext {
             "requestTracker", () -> buildRequestTracker(requestTrackerFromBuilder), cycleDetector);
     this.nodeFiltersFromBuilder = nodeFilters;
     this.classLoader = classLoader;
-    this.startupOptions = buildStartupOptions(extraStartupOptions);
+    this.startupOptionsBuilderRef =
+        new LazyReference<>(
+            "startupOptionsBuilder",
+            () -> buildStartupOptions(additionalStartupOptions),
+            cycleDetector);
   }
 
   /**
-   * Builds a map of options to use when sending a Startup message. The options argument passed in
-   * will append to, or overwrite, the Internal default options sent by the driver.
+   * Builds a map of options to send in a Startup message. The map will contain any internal options
+   * built into the driver (i.e. CQL_VERSION, COMPRESSION, DRIVER_NAME and DRIVER_VERSION), as well
+   * as any custom options passed in. This method will typically be called during the session
+   * building process, with the options passed here being set by {@link
+   * com.datastax.oss.driver.api.core.session.SessionBuilder#withCustomStartupOptions(java.util.Map)}
    */
-  protected Map<String, String> buildStartupOptions(Map<String, String> options) {
-    NullAllowingImmutableMap.Builder<String, String> builder = NullAllowingImmutableMap.builder();
-    builder.putAll(new InternalStartupOptions(this).getOptions());
-    if (options != null) {
-      builder.putAll(options);
-    }
-    return builder.build();
+  protected StartupOptionsBuilder buildStartupOptions(
+      Map<String, String> additionalStartupOptions) {
+    return new StartupOptionsBuilder(this).withAdditionalOptions(additionalStartupOptions);
   }
 
   protected Map<String, LoadBalancingPolicy> buildLoadBalancingPolicies() {
@@ -752,6 +754,6 @@ public class DefaultDriverContext implements InternalDriverContext {
   @NonNull
   @Override
   public Map<String, String> getStartupOptions() {
-    return startupOptions;
+    return startupOptionsBuilderRef.get().build();
   }
 }

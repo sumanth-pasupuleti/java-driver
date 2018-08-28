@@ -50,7 +50,7 @@ public class GuavaSessionBuilder extends SessionBuilder<GuavaSessionBuilder, Gua
         requestTracker,
         nodeFilters,
         classLoader,
-        startupOptions);
+        additionalStartupOptions);
   }
 
   @Override
