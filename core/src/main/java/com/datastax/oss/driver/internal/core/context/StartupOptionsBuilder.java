@@ -91,10 +91,34 @@ public class StartupOptionsBuilder {
       builder.put(Startup.COMPRESSION_KEY, compressionAlgorithm.trim());
     }
     // add driver name and version
-    builder
-        .put(DRIVER_NAME_KEY, MAVEN_COORDINATES.getName())
-        .put(DRIVER_VERSION_KEY, MAVEN_COORDINATES.getVersion().toString());
+    builder.put(DRIVER_NAME_KEY, getDriverName()).put(DRIVER_VERSION_KEY, getDriverVersion());
     // add any additonal options
     return builder.putAll(additionalOptions).build();
+  }
+
+  /**
+   * Returns this driver's name.
+   *
+   * <p>By default, this method will pull from the bundled Driver.properties file. Subclasses should
+   * override this method if they need to report a different Driver name on Startup.
+   *
+   * <p><b>NOTE:</b> The Driver name can not be set via {@link
+   * #withAdditionalOptions(java.util.Map)}
+   */
+  protected String getDriverName() {
+    return MAVEN_COORDINATES.getName();
+  }
+
+  /**
+   * Returns this driver's version.
+   *
+   * <p>By default, this method will pull from the bundled Driver.properties file. Subclasses should
+   * override this method if they need to report a different Driver version on Startup.
+   *
+   * <p><b>NOTE:</b> The Driver version can not be set via {@link
+   * #withAdditionalOptions(java.util.Map)}
+   */
+  protected String getDriverVersion() {
+    return MAVEN_COORDINATES.getVersion().toString();
   }
 }

@@ -52,7 +52,7 @@ public class GuavaDriverContext extends DefaultDriverContext {
       RequestTracker requestTracker,
       Map<String, Predicate<Node>> nodeFilters,
       ClassLoader classLoader,
-      Map<String, String> startupOptions) {
+      Map<String, String> additionalStartupOptions) {
     super(
         configLoader,
         typeCodecs,
@@ -61,7 +61,7 @@ public class GuavaDriverContext extends DefaultDriverContext {
         requestTracker,
         nodeFilters,
         classLoader,
-        startupOptions);
+        additionalStartupOptions);
   }
 
   @Override
